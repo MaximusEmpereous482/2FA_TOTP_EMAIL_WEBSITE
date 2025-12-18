@@ -1,0 +1,14 @@
+syntax = 'proto3';
+
+message Empty {}
+
+message Message {
+  string author = 1;
+  string text = 2;
+  float clock = 3;
+}
+
+service Messaging {
+  rpc MessageStream (Empty) returns (stream Message);
+  rpc SendMessage (Message) returns (Empty);
+}

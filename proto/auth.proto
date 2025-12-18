@@ -1,0 +1,36 @@
+syntax = 'proto3';
+
+// Запрос регистрации пользователя
+message RegisterRequest {
+  string login = 1;
+  string password = 2;
+}
+// Ответ регистрации пользователя
+message RegisterResponse{
+  bool success = 1;
+  string error = 2;
+}
+// Запрос аутентификации пользователя
+message LoginRequest {
+  string login = 1;
+  string password = 2;
+}
+//Ответ аутентификации пользователя
+message LoginResponse {
+  bool success = 1;
+  string token = 2;
+  string error = 3;
+  AuthInfo authinfo = 4;
+}
+message AuthInfo {
+  float time_auth = 1;
+  string app_title = 2;
+  string app_version = 3;
+}
+// Сервис для работы аутентификации
+service Auth {
+  //Метод регистрации пользователя
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  //Метод аутентификации пользователя
+  rpc Login(LoginRequest) returns (LoginResponse);
+}

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>gRPC 2ФА Веб Чат | МАКСос </title>
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --neon-green: #00ff44; /* Насыщенный зеленый */
+            --neon-pink: #ff00ff;
+            --text-light: #00ff44;
+            --shadow-glow:
+                0 0 5px var(--neon-green),
+                0 0 10px var(--neon-green),
+                0 0 15px rgba(0, 255, 68, 0.5);
+            --border-color: rgba(0, 255, 68, 0.5);
+        }
+
+        /* АНИМАЦИЯ ГЛИТЧА ДЛЯ ФОНА */
+        @keyframes background-shift {
+            0%, 100% { background-position: 0 0; }
+            5% { background-position: 1px 1px; }
+            15% { background-position: -1px -1px; }
+            25% { background-position: 0 0; }
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            flex-direction: column;
+
+            /* ФОН: ПЛОТНАЯ ТОЧЕЧНАЯ СЕТКА */
+            background-image: radial-gradient(rgba(0, 255, 68, 0.15) 1px, transparent 1px);
+            background-size: 10px 10px;
+
+            /* Анимация смещения фона для эффекта "глитча" */
+            animation: background-shift 3s infinite step-end;
+            /* Убраны фильтры Pip-Boy */
+            filter: none;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--neon-green);
+            text-shadow: var(--shadow-glow);
+            margin-bottom: 25px;
+            font-size: 2.5em;
+            letter-spacing: 5px;
+        }
+        h3 {
+            color: var(--neon-green);
+            text-shadow: 0 0 3px var(--neon-green);
+            margin-top: 5px;
+        }
+
+        /* КОНТЕЙНЕР ФОРМЫ */
+        #main-container {
+            max-width: 450px;
+            width: 90%;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 5px;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-glow);
+            position: relative;
+            z-index: 1;
+            transform: none;
+            text-shadow: none;
+        }
+
+
+        #qr-section, #otp-section, #auth-section {
+            padding: 10px 0;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            background: rgba(0, 255, 68, 0.1);
+            border: 1px solid var(--neon-green);
+            border-radius: 0;
+            color: var(--neon-green);
+            transition: all 0.2s;
+            text-shadow: 0 0 2px var(--neon-green);
+            /* Убраны инсет-тени Pip-Boy */
+            box-shadow: none;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+            box-shadow: var(--shadow-glow);
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            font-weight: bold;
+            border: 2px solid var(--neon-green);
+            border-radius: 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(0, 255, 68, 0.2);
+            color: var(--neon-green);
+            box-shadow: var(--shadow-glow);
+            text-transform: uppercase;
+            /* Убрана темная тень Pip-Boy */
+            text-shadow: none;
+        }
+        button:hover {
+            background: var(--neon-green);
+            color: var(--bg-dark);
+            box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-green);
+        }
+        .back-button {
+            background: none;
+            color: var(--neon-green);
+            box-shadow: none;
+            border: 1px dashed var(--neon-green);
+            width: auto;
+            margin-top: 15px;
+            text-shadow: none;
+            text-transform: none;
+        }
+        .back-button:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: white;
+            box-shadow: 0 0 5px var(--neon-pink);
+        }
+        #qr-image {
+            max-width: 200px;
+            height: auto;
+            display: block;
+            margin: 15px auto;
+            border: 3px solid var(--neon-green);
+            border-radius: 0;
+            box-shadow: var(--shadow-glow);
+            /* Восстановлен исходный стиль QR-кода */
+            background-color: white;
+            filter: none;
+            padding: 5px;
+        }
+        .hidden { display: none; }
+        #status-message { color: var(--neon-green); text-shadow: var(--shadow-glow); font-weight: bold; }
+        #otp-username { color: var(--neon-green); text-shadow: 0 0 3px var(--neon-green); }
+
+    </style>
+</head>
+<body>
+    <h2>МАКСос</h2>
+    <div id="main-container">
+
+        <div id="auth-section">
+            <h3>ВХОД / РЕГИСТРАЦИЯ</h3>
+            <input type="text" id="auth-login" placeholder="ЛОГИН" onkeyup="handleEnter(event, 'login')">
+            <input type="password" id="auth-password" placeholder="ПАРОЛЬ" onkeyup="handleEnter(event, 'login')">
+
+            <button onclick="handleRegister()">&#x27A4; РЕГИСТРАЦИЯ</button>
+            <button onclick="handleLogin()">&#x27A4; ВОЙТИ</button>
+        </div>
+
+        <div id="qr-section" class="hidden">
+            <h3>[ИНИЦИАЛИЗАЦИЯ 2ФА]: АКТИВАЦИЯ TOTP</h3>
+            <p>Отсканируйте этот QR-код с помощью вашего приложения-аутентификатора:</p>
+            <img id="qr-image" src="" alt="QR-код для 2ФА Секрета" style="display: none;">
+            <button class="back-button" onclick="goToLogin()">&#x2B05; НАЗАД К ВХОДУ</button>
+        </div>
+
+        <div id="otp-section" class="hidden">
+            <h3>[ДОСТУП]: ДВУХФАКТОРНАЯ АУТЕНТИФИКАЦИЯ</h3>
+            <p id="otp-message">Введите 6-значный код для <strong id="otp-username"></strong>:</p>
+            <input type="text" id="otp-code" placeholder="6-ЗНАЧНЫЙ КОД" onkeyup="handleEnter(event, 'otp')">
+
+            <button onclick="checkOtp()">&#x27A4; ПРОВЕРИТЬ КОД</button>
+            <button onclick="sendEmailOtp()">&#x27A4; ОТПРАВИТЬ КОД НА EMAIL</button>
+
+            <button class="back-button" onclick="goToLogin()">&#x2B05; НАЗАД К ВХОДУ</button>
+        </div>
+
+        <p id="status-message"></p>
+    </div>
+
+    <script>
+        let currentLogin = '';
+
+        /**
+         * Обрабатывает нажатие клавиши Enter для автоматического запуска функций.
+         */
+        function handleEnter(event, mode) {
+            if (event.key === 'Enter') {
+                if (mode === 'login') {
+                    // При нажатии Enter в полях логина/пароля пробуем войти
+                    handleLogin();
+                } else if (mode === 'otp') {
+                    checkOtp();
+                }
+            }
+        }
+
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? 'var(--neon-pink)' : 'var(--neon-green)';
+            statusEl.style.textShadow = isError ? '0 0 5px var(--neon-pink)' : 'var(--shadow-glow)';
+        }
+        function hideAllSections() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('otp-section').classList.add('hidden');
+            document.getElementById('qr-section').classList.add('hidden');
+        }
+
+        /**
+         * Переводит интерфейс на главную форму и очищает все данные сессии/формы.
+         */
+        function goToLogin() {
+            // 1. Очистка состояния сессии/логина (эффект выхода)
+            currentLogin = '';
+            document.getElementById('auth-login').value = '';
+            document.getElementById('auth-password').value = '';
+            document.getElementById('otp-code').value = '';
+            document.getElementById('otp-username').textContent = '';
+
+            // 2. Скрытие/показ секций
+            hideAllSections();
+            document.getElementById('auth-section').classList.remove('hidden');
+            showStatus('');
+        }
+
+        async function apiCall(endpoint, data) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                // Обработка ошибки, возвращаемой сервером (например, 400 Bad Request)
+                throw new Error(result.error || result.message || 'Ошибка: Неизвестный ответ');
+            }
+            return result;
+        }
+
+        async function handleRegister() {
+            // Переменные login и password объявляются локально, что предотвращает ошибку 'is not defined'
+            const login = document.getElementById('auth-login').value;
+            const password = document.getElementById('auth-password').value;
+            if (!login || !password) { showStatus('ОШИБКА: ВВЕДИТЕ ЛОГИН И ПАРОЛЬ.', true); return; }
+            try {
+                // 1. Вызов API регистрации. Ожидаем qr_url в ответе.
+                const result = await apiCall('/api/register', { login, password });
+
+                // 2. Скрытие секций и динамическая установка QR-кода
+                hideAllSections();
+                const qrImage = document.getElementById('qr-image');
+
+                // Устанавливаем URL, что инициирует асинхронную загрузку
+                qrImage.src = result.qr_url;
+                qrImage.style.display = 'block'; // Делаем видимым
+
+                document.getElementById('qr-section').classList.remove('hidden');
+                showStatus(result.message, false);
+            } catch (e) {
+                showStatus(e.message, true);
+            }
+        }
+
+        async function handleLogin() {
+            const login = document.getElementById('auth-login').value;
+            const password = document.getElementById('auth-password').value;
+            if (!login || !password) { showStatus('ОШИБКА: ВВЕДИТЕ ЛОГИН И ПАРОЛЬ.', true); return; }
+            try {
+                const result = await apiCall('/api/login', { login, password });
+                currentLogin = login;
+                document.getElementById('otp-username').textContent = login;
+                hideAllSections();
+                document.getElementById('otp-section').classList.remove('hidden');
+                showStatus(result.message);
+            } catch (e) {
+                showStatus(e.message, true);
+            }
+        }
+        async function sendEmailOtp() {
+            try {
+                await apiCall('/api/send_otp', { login: currentLogin });
+                showStatus('[EMAIL]: КОД OTP ОТПРАВЛЕН. ПРОВЕРЬТЕ ПОЧТОВЫЙ ЯЩИК.');
+            } catch (e) {
+                showStatus(e.message, true);
+            }
+        }
+        async function checkOtp() {
+            const otpCode = document.getElementById('otp-code').value;
+            if (!otpCode) { showStatus('ОШИБКА: ВВЕДИТЕ КОД OTP.', true); return; }
+            try {
+                await apiCall('/api/check_otp', { login: currentLogin, otp: otpCode });
+                showStatus('ДОСТУП ПРЕДОСТАВЛЕН. ПЕРЕНАПРАВЛЕНИЕ...');
+                window.location.href = '/chat';
+            } catch (e) {
+                showStatus(e.message, true);
+            }
+        }
+    </script>
+</body>
+</html>

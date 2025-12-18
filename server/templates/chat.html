@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>gRPC Веб Чат | КПП (КОНТРОЛЬНЫЙ ПУНКТ)</title>
+    <style>
+        /* СТИЛЬ КПП */
+        :root {
+            --bg-dark: #000000;
+            --bg-panel: rgba(0, 0, 0, 0.8);
+            --neon-green: #00ff44; /* Насыщенный зеленый */
+            --neon-pink: #ff00ff;
+            --text-light: #00ff44;
+            --shadow-glow:
+                0 0 5px var(--neon-green),
+                0 0 10px var(--neon-green),
+                0 0 15px rgba(0, 255, 68, 0.5);
+            --border-color: rgba(0, 255, 68, 0.5);
+        }
+
+        /* АНИМАЦИЯ ГЛИТЧА ДЛЯ ФОНА */
+        @keyframes background-shift {
+            0%, 100% { background-position: 0 0; }
+            5% { background-position: 1px 1px; }
+            15% { background-position: -1px -1px; }
+            25% { background-position: 0 0; }
+        }
+
+        /* */
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            /* ФОН */
+            background-image: radial-gradient(rgba(0, 255, 68, 0.15) 1px, transparent 1px);
+            background-size: 10px 10px;
+
+            /* Анимация смещения фона для эффекта "глитча" */
+            animation: background-shift 10s infinite step-end;
+            /* */
+            filter: none;
+        }
+
+        /* КОНТЕЙНЕР ЧАТА */
+        #chat-main {
+            width: 100%;
+            max-width: 800px;
+            height: 85vh;
+            background-color: var(--bg-panel);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-glow);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+            /* Убран изгиб Pip-Boy */
+            transform: none;
+            text-shadow: none;
+        }
+
+        /* */
+
+        h2 {
+            text-align: center;
+            color: var(--neon-green);
+            text-shadow: var(--shadow-glow);
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        a {
+            color: var(--neon-green);
+            text-decoration: none;
+            margin-bottom: 15px;
+            text-shadow: 0 0 3px var(--neon-green);
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ИСТОРИЯ ЧАТА */
+        #chat-history {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: scroll;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        /* Скроллбар */
+        #chat-history::-webkit-scrollbar { width: 5px; }
+        #chat-history::-webkit-scrollbar-thumb { background: var(--neon-green); }
+        #chat-history::-webkit-scrollbar-track { background: var(--bg-dark); }
+
+
+        /* СТИЛИ СООБЩЕНИЙ */
+        .message-line {
+            padding: 5px 0;
+            border-bottom: 1px dashed rgba(0, 255, 0, 0.2);
+            text-shadow: 0 0 1px var(--neon-green);
+        }
+        .message-line:last-child { border-bottom: none; }
+        .message-author { font-weight: bold; color: var(--neon-green); }
+        .message-text { color: var(--neon-green); }
+        .system-message { color: rgba(0, 255, 0, 0.7); font-style: italic; }
+
+        /* ПОЛЕ ВВОДА */
+        .input-container {
+            display: flex;
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid var(--neon-green);
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 12px;
+            box-sizing: border-box;
+            background: rgba(0, 255, 68, 0.1);
+            border: 1px solid var(--neon-green);
+            border-radius: 0;
+            color: var(--neon-green);
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            /* Убраны инсет-тени Pip-Boy */
+            box-shadow: none;
+        }
+        #message-input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+            box-shadow: var(--shadow-glow);
+        }
+
+        #send-button {
+            width: 120px;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 2px solid var(--neon-green);
+            border-radius: 0;
+            cursor: pointer;
+            font-weight: bold;
+            background: rgba(0, 255, 68, 0.3);
+            color: var(--neon-green);
+            box-shadow: var(--shadow-glow);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            /* Убрана темная тень Pip-Boy */
+            text-shadow: none;
+        }
+        #send-button:hover {
+            background: var(--neon-green);
+            color: var(--bg-dark);
+            box-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        #chat-status {
+            margin-top: 10px;
+            color: var(--neon-green);
+            text-shadow: var(--shadow-glow);
+        }
+    </style>
+</head>
+<body>
+    <h2>[АКТИВНЫЙ СЕАНС] | ПОЛЬЗОВАТЕЛЬ: <span style="color:var(--neon-green); text-shadow: var(--shadow-glow);">{{ username }}</span></h2>
+    <a href="/logout">[ВЫХОД]</a>
+
+    <div id="chat-main">
+        <div id="chat-history">
+            <p class="system-message">[СИСТЕМНОЕ СООБЩЕНИЕ]: СОЕДИНЕНИЕ УСТАНОВЛЕНО. ОЖИДАНИЕ ПОТОКА ДАННЫХ...</p>
+        </div>
+
+        <div class="input-container">
+            <input type="text" id="message-input" placeholder="> ВВЕДИТЕ КОМАНДУ ИЛИ СООБЩЕНИЕ" onkeyup="handleEnter(event)">
+            <button id="send-button" onclick="sendMessage()">ОТПРАВИТЬ;</button>
+        </div>
+    </div>
+
+    <p id="chat-status"></p>
+
+    <script>
+        /**
+         * Обрабатывает нажатие клавиши Enter для отправки сообщения.
+         */
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function showChatStatus(message, isError = false) {
+            const statusEl = document.getElementById('chat-status');
+            statusEl.textContent = message;
+            statusEl.style.color = 'var(--neon-green)';
+            statusEl.style.textShadow = 'var(--shadow-glow)';
+        }
+
+        async function apiCall(endpoint, data) {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || result.message || 'ОШИБКА: НЕИЗВЕСТНЫЙ ОТВЕТ');
+            }
+            return result;
+        }
+
+        async function sendMessage() {
+            const inputEl = document.getElementById('message-input');
+            const text = inputEl.value;
+            if (!text) return;
+
+            const history = document.getElementById('chat-history');
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            const username = "{{ username }}";
+            // Вставляем сообщение в чат
+            const messageHtml = `
+                <p class="message-line">
+                    <span style="color:var(--neon-green);">[${timeStr}]</span>
+                    <span class="message-author">&lt;${username}&gt;</span>:
+                    <span class="message-text">${text}</span>
+                </p>
+            `;
+            history.innerHTML += messageHtml;
+            history.scrollTop = history.scrollHeight;
+
+            try {
+                await apiCall('/api/send_message', { text: text });
+                inputEl.value = '';
+                showChatStatus('[СООБЩЕНИЕ]: ДАННЫЕ ОТПРАВЛЕНЫ.', false);
+            } catch (e) {
+                showChatStatus(e.message, true);
+            }
+        }
+    </script>
+</body>
+</html>
