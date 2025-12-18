@@ -1,25 +1,20 @@
 1. Запуск Почтового Сервера (Mailhog) (ЕСЛИ ВЫБИРАЕМ АУТЕНТИФИКАЦИЮ ПО EMAIL)
+ПРЕЖДЕ ВСЕГО НЕОБХОДИМ DOCKER DESKTOP. В НЁМ ЗАПУСКАЕМ MAILHOG:
 Mailhog необходим для тестирования Email OTP. Он перехватывает все отправленные письма, чтобы вы могли их посмотреть.
 Убедитесь, что установлен Docker.
 Выполните команду в терминале, чтобы запустить Mailhog:
-
 docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
-
 Проверка: Откройте браузер по адресу http://localhost:8025, чтобы увидеть входящие письма.
 
 2. Запуск gRPC Сервера
 Сервер должен работать постоянно, чтобы обрабатывать запросы от веб-приложения.
-
 Запустите:
-
 python run_server.py
 Ожидаемый вывод: Server started on port 8000
 
 3. Запуск Веб-приложения (Клиента)
 Это ваш основной интерфейс чата, доступный через браузер.
-
 Запустите:
-
 python web_server.py
 
 Ожидаемый вывод: * Running on http://127.0.0.1:5000
@@ -31,14 +26,3 @@ error_correction=qrcode.constants.ERROR_CORRECT_H,
 box_size=10,
 border=4,
 )
-qr.add_data(secret_url)
-qr.make(fit=True)
-img = qr.make_image(fill_color="darkblue", back_color="#ffffff").convert('RGB')
-logo_file = 'logo.png'
-logo = Image.open(logo_file).convert("RGB")
-qr_width, qr_height = img.size
-os.makedirs('qr', exist_ok=True)
-img.save("./qr/my_secret.png")
-logger.info(f'QR-код сохранён вдиректорию qr')
-except Exception as e:
-logger.error(f"Ошибка сохраненияQR-кода {e}")
