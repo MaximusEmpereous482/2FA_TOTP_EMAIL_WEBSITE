@@ -20,9 +20,3 @@ python web_server.py
 Ожидаемый вывод: * Running on http://127.0.0.1:5000
 Переходим по адресу и используем.
 
-qr = qrcode.QRCode(
-version=1,
-error_correction=qrcode.constants.ERROR_CORRECT_H,
-box_size=10,
-border=4,
-)
