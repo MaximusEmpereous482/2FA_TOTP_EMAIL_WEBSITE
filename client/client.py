@@ -9,13 +9,15 @@ from proto.otp_pb2_grpc import *
 import qrcode
 import logging
 logger = logging.getLogger('MessageService')
+#ChatClient отвечает за регистрацию, авторизацию пользователя, запуск микросервисов, проверку OTP 
+
 
 class ChatClient:
     def __init__(self, port=8000, host='127.0.0.1'):
         self._port = port
         self._host = host
         self._on_message_receive = None
-        #Канал подключ к сервису
+        #Канал подключения к сервису
         self._channel = grpc.insecure_channel(f'{self._host}:{self._port}')
         #Создаем сервис клиент по каналу
         self._msgs_service = MessagingStub(self._channel)
@@ -43,10 +45,8 @@ class ChatClient:
             box_size=10,
             border=4,
         )
-
         qr.add_data(resp_otp.secret)
         qr.make(fit=True)
-
         img = qr.make_image(fill_color="#00f53d", back_color="#000000").convert('RGB')
         CLIENT_DIR = os.path.dirname(os.path.abspath(__file__))
         SAVE_DIR = os.path.join(CLIENT_DIR, 'qr')
