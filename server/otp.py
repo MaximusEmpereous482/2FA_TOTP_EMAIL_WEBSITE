@@ -6,9 +6,8 @@ import smtplib
 from email.mime.text import MIMEText
 import logging
 import time
-
 logger = logging.getLogger('OtpService')
-
+#Константы для OTP
 SMTP_SERVER = '127.0.0.1'
 SMTP_PORT = 1025
 SENDER_EMAIL = 'no-reply@2fa-system.com'
